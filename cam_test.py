@@ -1,33 +1,49 @@
 from picamera2 import Picamera2
 import time
 import sys
+import cv2
+import numpy as np
 
 # Initialize the camera
 picam2 = Picamera2()
 
 # Configure the camera to use a specific preview size
-# This helps with stability
-preview_config = picam2.create_preview_configuration(main={"size": (640, 480)})
+# The main stream needs to have a format that OpenCV can use (like BGR888)
+# We also use a smaller resolution for better performance
+preview_config = picam2.create_preview_configuration(
+    main={"size": (640, 480), "format": "XBGR8888"})
 picam2.configure(preview_config)
 
-print("Starting camera preview...")
+# Start the camera without a default preview window
+picam2.start()
+
+print("Starting camera preview in OpenCV window...")
+print("Press 'q' to close the window.")
 
 try:
-    picam2.start()
-    
-    # Wait for a moment to let the camera warm up
-    time.sleep(2)
-    
-    # Keep the preview window open until the user stops the script
-    print("Camera is active. Press 'Ctrl+C' to close the preview.")
     while True:
-        time.sleep(1)
-
+        # Capture a single frame as a NumPy array
+        frame = picam2.capture_array()
+        
+        # Convert the frame to a BGR format for OpenCV
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGBA2BGR)
+        
+        # Flip the frame horizontally to mirror the video
+        frame = cv2.flip(frame, 1)
+        
+        # Display the frame in a new window named 'Camera Preview'
+        cv2.imshow('Camera Preview', frame)
+        
+        # Check for the 'q' key to quit the program
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+            
 except KeyboardInterrupt:
     print("\nTest stopped by user.")
 
 finally:
-    # Always stop the camera and close the preview window
+    # Stop the camera and close all OpenCV windows
     picam2.stop()
+    cv2.destroyAllWindows()
     print("Camera preview closed.")
     sys.exit()
